@@ -1,0 +1,33 @@
+{
+  "name": "game-elegos",
+  "version": "0.1.0",
+  "description": "Adds support for Elegos to Vortex",
+  "scripts": {
+    "webpack": "node ./node_modules/webpack/bin/webpack --config webpack.config.js --display-error-details --progress --profile --color",
+    "copy_assets": "copyfiles -f assets/* dist && copyfiles -f assets/content/* dist/content",
+    "bundle7z": "del game-masseffectlegendaryedition.7z && 7z a -t7z game-masseffectlegendaryedition.7z .\\dist\\*",
+    "build": "yarn run webpack && yarn run copy_assets && extractInfo && json -f dist\\info.json -I -e \"this.name=\\\"Game: Mass Effect Legendary Edition\\\"\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pickysaurus/vortex-elegos.git"
+  },
+  "author": "Pickysaurus",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Pickysaurus/vortex-elegos/upload/issues"
+  },
+  "homepage": "https://github.com/Pickysaurus/vortex-elegos/upload#readme",
+  "devDependencies": {
+    "copyfiles": "^2.1.1",
+    "json": "^9.0.6",
+    "ts-loader": "^5.3.3",
+    "typescript": "^4.2.4",
+    "vortex-api": "Nexus-Mods/vortex-api",
+    "webpack": "^4.42.1",
+    "webpack-cli": "^3.3.11"
+  },
+  "dependencies": {
+    "path": "^0.12.7"
+  }
+}
