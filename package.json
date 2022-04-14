@@ -5,8 +5,8 @@
   "scripts": {
     "webpack": "node ./node_modules/webpack/bin/webpack --config webpack.config.js --display-error-details --progress --profile --color",
     "copy_assets": "copyfiles -f assets/* dist && copyfiles -f assets/content/* dist/content",
-    "bundle7z": "del game-masseffectlegendaryedition.7z && 7z a -t7z game-masseffectlegendaryedition.7z .\\dist\\*",
-    "build": "yarn run webpack && yarn run copy_assets && extractInfo && json -f dist\\info.json -I -e \"this.name=\\\"Game: Mass Effect Legendary Edition\\\"\""
+    "bundle7z": "del game-elegos.7z && 7z a -t7z game-elegos.7z .\\dist\\*",
+    "build": "yarn run webpack && yarn run copy_assets && extractInfo && json -f dist\\info.json -I -e \"this.name=\\\"Game: Elegos\\\"\""
   },
   "repository": {
     "type": "git",
