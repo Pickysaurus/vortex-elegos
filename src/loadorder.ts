@@ -4,9 +4,9 @@ import { GAME_ID, MANIFEST_FILE } from './common';
 import { ElegosLoadOrder, ElegosModInfo } from './ElegosTypes';
 
 const usageInstructions = (): string => {
-    return 'Elegos loads mods for folders or zip archives located in the Mods directory of the game installation.'+
-    'The load order controls which changes will be used where multiple mods edit the same game assets.'+
-    'Load order entries with a lower index number will overwrite any others (e.g. The mod in slot 1 overwrites anything below it that makes the same edits).\n\n'+
+    return 'Elegos loads mods for folders or zip archives located in the Mods directory of the game installation. '+
+    'The load order controls which changes will be used where multiple mods edit the same game assets. '+
+    'Load order entries with a lower index number will overwrite any others (e.g. The mod in slot 1 overwrites anything below it that makes the same edits).<br/><br/>'+
     'The icon on each mod indicates if they are loaded from a folder (📂) or a zip file (🗜️).';
 }
 
