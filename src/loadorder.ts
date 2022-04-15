@@ -51,12 +51,12 @@ async function deserializeLoadOrder(api: types.IExtensionApi): Promise<types.Loa
     try {
         let fileList: string[] = await fs.readdirAsync(modsPath);
         // We want folders or zip files
-        fileList = fileList.filter(f => path.extname(f) === '.zip' || !!path.extname(f))
+        fileList = fileList.filter(f => path.extname(f) === '.zip' || !path.extname(f))
         // exclude the temp folder
         .filter(f => !['temp'].includes(f.toLowerCase()));
 
         // Get ids from folder mods
-        const folderModList = fileList.filter(f => path.extName(f) === '.zip');
+        const folderModList = fileList.filter(f => !path.extname(f));
         for (const folder of folderModList) {
             const manifest = await fs.readFileAsync(path.join(modsPath, folder, 'modinfo.json'));
             const modInfo: ElegosModInfo = JSON.parse(manifest);
@@ -64,9 +64,23 @@ async function deserializeLoadOrder(api: types.IExtensionApi): Promise<types.Loa
         }
 
         // Get ids from zip mods
-        const zipMods = fileList.filter(f => !path.extName(f));
+        const zipMods = fileList.filter(f => path.extname(f) === '.zip');
+
+        if (zipMods.length) {
+            const zipper = new util.SevenZip();
+            for (const zip of zipMods) {
+                const zipPath = path.join(modsPath, zip);
+                const tempPath = path.join(modsPath, 'temp', path.basename(zip, path.extname(zip)));
+                await zipper.extract(zipPath, tempPath);
+                const info = await fs.readFileAsync(path.join(tempPath, 'modinfo.json'), { encoding: 'utf8' });
+                const modInfo: ElegosModInfo = JSON.parse(info);
+                installedMods.push({ loadOrderId: modInfo.ID, name: modInfo.Name, type: 'zip' });
+                await fs.removeAsync(tempPath);
+            }
+        }
+
         // NOT SUPPORTED YET
-        installedMods.push({ loadOrderId: 'fdsfdsfsdf', name: 'Example Mod - ZIPs are not yet supported', type: 'zip' });
+        // installedMods.push({ loadOrderId: 'fdsfdsfsdf', name: 'Example Mod - ZIPs are not yet supported', type: 'zip' });
 
     }   
     catch(err) {
@@ -78,18 +92,24 @@ async function deserializeLoadOrder(api: types.IExtensionApi): Promise<types.Loa
         const vortexMod = managedIds.find(managed => managed.loadOrderId === mod.loadOrderId);
         const loEntry = loadorder.find(lo => lo.loadOrderId === mod.loadOrderId);
 
+        const renderName = (mod, vortexMod) => {
+            const prefix = mod.type === 'folder' ? '📂' : '🗜️' ;
+            const name = vortexMod ? util.renderModName(mods[vortexMod.modId]) : mod.name;
+            return `${prefix} ${name}`;
+        }
+
         return {
             id: mod.loadOrderId,
-            name: vortexMod ? util.renderModName(mods[vortexMod.modId]) : mod.name,
+            name: renderName(mod, vortexMod),
             enabled: loEntry?.enabled || false,
-            modId: vortexMod ? mods[vortexMod.modId].id : undefined,
+            modId: vortexMod && mod.type === 'folder' ? mods[vortexMod.modId].id : undefined,
             data: {
                 type: mod.type,
                 index: loadorder.indexOf(loEntry) !== -1 ? loadorder.indexOf(loEntry) : 999
             }
         }
 
-    }).sort((a, b) => a.data.index = b.data.index);
+    }).sort((a, b) => a.data.index - b.data.index);
     
     return loadOrderComplete;
 }
