@@ -6,12 +6,34 @@ import { ElegosLoadOrder, ElegosModInfo } from './ElegosTypes';
 const usageInstructions = (): string => {
     return 'Elegos loads mods for folders or zip archives located in the Mods directory of the game installation. '+
     'The load order controls which changes will be used where multiple mods edit the same game assets. '+
-    'Load order entries with a lower index number will overwrite any others (e.g. The mod in slot 1 overwrites anything below it that makes the same edits).<br/><br/>'+
+    'Load order entries with a lower index number will overwrite any others (e.g. The mod in slot 1 overwrites anything below it that makes the same edits). '+
     'The icon on each mod indicates if they are loaded from a folder (📂) or a zip file (🗜️).';
 }
 
 async function validate(before: types.LoadOrder, after: types.LoadOrder): Promise<types.IValidationResult> {
-    return;
+    // Check for duplicate IDs
+    const counts = after.reduce((prev, cur) => {
+        if (!!prev[cur.data.id]) prev[cur.data.id].push(cur.id);
+        else prev[cur.data.id] = [cur.id];
+        return prev;
+    }, {});
+
+    const duplicates = Object.keys(counts).reduce((prev, cur) => {
+        const value: string[] = counts[cur];
+        if (value.length > 1) prev[cur] = counts[cur];
+        return prev;
+    }, {});
+
+    if (!duplicates || !Object.keys(duplicates).length) return;
+
+    const invalid = Object.keys(duplicates).map(id => {
+        const dupes: types.ILoadOrderEntry[] = duplicates[id].map(d => after.find(e => e.id === d));
+        const lastEntry = dupes.pop();
+        const invalidEntry = { id: lastEntry.id, reason: `${lastEntry.name} has the same ID in the ${MANIFEST_FILE} as ${dupes.map(d => d.name)}. IDs must be unique. ${lastEntry.data.id}` };
+        return invalidEntry;             
+    });
+
+    return { invalid };
 }
 
 async function serializeLoadOrder(api: types.IExtensionApi, order :types.LoadOrder): Promise<void> {
@@ -19,8 +41,6 @@ async function serializeLoadOrder(api: types.IExtensionApi, order :types.LoadOrd
     const discovery = selectors.discoveryByGame(state, GAME_ID);
     if (!discovery?.path) return;
     const loadOrderPath = path.join(discovery.path, 'Mods', 'modorder.json');
-
-    // TODO - If two mods share the same ID, it will take the last value for them. Need to handle this (possibly in the validate step?)
     
     const loadOrder = order.reduce((prev, cur) => {
         if (cur.data?.id) prev[cur.data.id] = cur.enabled;
@@ -106,10 +126,13 @@ async function deserializeLoadOrder(api: types.IExtensionApi): Promise<types.Loa
             const loEntry = loadOrderResult.find(e => e.data?.id === key);
             if (!loEntry) continue;
             loEntry.enabled = state;
-            loEntry.data.index = loKeys.indexOf(key) !== -1 ? loKeys : 999;
         }
         // Order the load order to match the 
-        loadOrderResult.sort((a : types.ILoadOrderEntry, b: types.ILoadOrderEntry) => a.data.index - b.data.index);
+        loadOrderResult.sort((a : types.ILoadOrderEntry, b: types.ILoadOrderEntry) => {
+            const aIndex = loKeys.indexOf(a.data?.id) !== -1 ? loKeys.indexOf(a.data?.id) : 999;
+            const bIndex = loKeys.indexOf(b.data?.id) !== -1 ? loKeys.indexOf(b.data?.id) : 999;
+            return aIndex - bIndex;
+        });
     }
     catch(err) {
         if (err.code !== 'ENOENT') log('warn', 'Failed to get Elegos load order data.', err);
