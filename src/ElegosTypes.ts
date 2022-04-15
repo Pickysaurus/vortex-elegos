@@ -7,3 +7,7 @@ export interface ElegosModInfo {
     GameVersion?: string;
     Tags?: string;
 }
+
+export interface ElegosLoadOrder {
+    [id: string] : boolean;
+}
