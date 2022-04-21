@@ -1,6 +1,6 @@
 {
   "name": "game-elegos",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Adds support for Elegos to Vortex",
   "scripts": {
     "webpack": "node ./node_modules/webpack/bin/webpack --config webpack.config.js --display-error-details --progress --profile --color",

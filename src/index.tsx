@@ -1,8 +1,9 @@
-import { fs, types, util } from 'vortex-api';
+import { fs, log, types, util } from 'vortex-api';
 import * as path from 'path';
 import { GAME_ID } from './common';
 import { testElegosMod, installElegosMod } from './installers';
 import { validate, serializeLoadOrder, deserializeLoadOrder, usageInstructions } from './loadorder';
+import { ElegosSettings, ElegosVersionInfo } from './ElegosTypes';
 
 const STEAMAPP_ID = '1882300';
 const STEAMTESTINGAPP_ID = '1882320';
@@ -12,20 +13,20 @@ function findGame(): string {
         .then((game: any) => game.gamePath);
 }
 
-async function setup(discovery: types.IDiscoveryResult) {
+async function setup(discovery: types.IDiscoveryResult): Promise<void> {
     // Ensure that the Mods folder exists.
     const modsFolder = path.join(discovery.path, 'Mods');
     try {
         await fs.ensureDirAsync(modsFolder);
     }
     catch(err) {
-        throw new util.SetupError('Unable to create the Mods folder for Elegos, please try creating it manually before trying again.');
+        throw new util.SetupError('Unable to create the Mods folder for Elegos, please try creating it manually before trying again. '+modsFolder);
     }
 
     const settingsPath = path.join(discovery.path, 'data', 'settings.json');
     try {
         const settingsRaw: string = await fs.readFileAsync(settingsPath, { encoding: 'utf8' });
-        const settings: Object = JSON.parse(settingsRaw);
+        const settings: ElegosSettings = JSON.parse(settingsRaw);
         if (settings?.['modding.enabled'] === true) return;
         // We need to enable modding in the game settings.
         else {
@@ -34,8 +35,9 @@ async function setup(discovery: types.IDiscoveryResult) {
         }
     }
     catch(err) {
-        // Most like the settings.json is missing. 
-        throw new util.SetupError('Unable to enable modding for Elegos, please make sure you have started the game at least once before managing it.');
+        // If the settings.json file isn't present, modding is on by default.
+        if (err.code !== 'ENOENT') log('error', 'Error checking Elegos settings.json for modding.enabled toggle', err);
+        return;
     }
 }
 
@@ -53,6 +55,19 @@ function santizeModName(input: string): string {
     .replace(windowsReservedRe, ''); 
 }
 
+async function getGameVersion(gamePath: string): Promise<string> {
+    const versionFilePath = path.join(gamePath, 'data', 'version.json');
+    try {
+        const versionData = await fs.readFileAsync(versionFilePath, { encoding: 'utf8' });
+        const versionJson: ElegosVersionInfo = JSON.parse(versionData);
+        const version = `${versionJson.majorVersion || 0}.${versionJson.minorVersion || 0}.${versionJson.buildNumber || 0}`;
+        return version;
+    }
+    catch(err) {
+        log('warn', 'Could not resolve Elegos version number from JSON file', err);
+        return '0.0.0';
+    }
+}
 
 
 function main(context: types.IExtensionContext) {
@@ -66,6 +81,7 @@ function main(context: types.IExtensionContext) {
         setup,
         logo: 'gameart.jpg',
         executable: () => 'Elegos.exe',
+        getGameVersion,
         requiredFiles: [
             'Elegos.exe'
         ],
